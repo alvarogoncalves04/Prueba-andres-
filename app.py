@@ -13,10 +13,11 @@ if 'secreto' not in st.session_state:
     st.session_state.historial = []
     st.session_state.vidas = 7
     st.session_state.mensaje = ("info", "Introduce un número y dale a ENTER")
+    st.session_state.terminado = False
 
 # --- LÓGICA DEL JUEGO ---
 def procesar_jugada():
-    if st.session_state.input_jugada and isinstance(st.session_state.vidas, int) and st.session_state.vidas > 0:
+    if st.session_state.input_jugada and not st.session_state.terminado:
         val = st.session_state.input_jugada
         st.session_state.intentos += 1
         st.session_state.historial.append(val)
@@ -30,6 +31,10 @@ def procesar_jugada():
         else:
             st.session_state.mensaje = ("success", f"¡LOGRADO! Era el {val}. 🎉")
             st.session_state.vidas = "GANADOR"
+            st.session_state.terminado = True
+        
+        if st.session_state.vidas == 0:
+            st.session_state.terminado = True
 
 # --- DISEÑO DE LA INTERFAZ ---
 st.title("🎮 Adivinanza Estadística v2.0")
@@ -41,12 +46,10 @@ col_juego, col_stats = st.columns([0.4, 0.6], gap="large")
 with col_juego:
     st.subheader("🕹️ Panel de Control")
     
-    # AQUÍ ESTABA EL ERROR (Corregido):
     dificultad = st.select_slider(
         "Selecciona el rango de búsqueda:", 
         options=["Fácil (1-50)", "Normal (1-100)", "Modo UCV (1-500)"]
     )
-    
     max_val = 50 if "Fácil" in dificultad else 100 if "Normal" in dificultad else 500
     
     if isinstance(st.session_state.vidas, int):
@@ -59,7 +62,8 @@ with col_juego:
         min_value=1, 
         max_value=max_val, 
         key="input_jugada",
-        on_change=procesar_jugada
+        on_change=procesar_jugada,
+        disabled=st.session_state.terminado
     )
     
     tipo, texto = st.session_state.mensaje
@@ -82,11 +86,12 @@ with col_stats:
         m1, m2 = st.columns(2)
         m1.metric("Total de Intentos", st.session_state.intentos)
         
-        error_actual = 0
-        if isinstance(st.session_state.vidas, int) or st.session_state.vidas == "GANADOR":
-            error_actual = abs(st.session_state.secreto - st.session_state.historial[-1])
-        
-        m2.metric("Distancia al objetivo", "¡Encontrado!" if error_actual == 0 else error_actual)
+        # OCULTAR LA RESPUESTA: Solo se muestra si el juego terminó
+        if st.session_state.terminado:
+            error_val = abs(st.session_state.secreto - st.session_state.historial[-1])
+            m2.metric("Distancia al objetivo", "¡Encontrado!" if error_val == 0 else "Fin del juego")
+        else:
+            m2.metric("Distancia al objetivo", "???") # <--- Secreto guardado
 
         df = pd.DataFrame({
             "Intento": range(1, len(st.session_state.historial) + 1), 
@@ -94,7 +99,11 @@ with col_stats:
         })
         
         fig = px.line(df, x="Intento", y="Valor", title="Convergencia de tus predicciones", markers=True)
-        fig.add_hline(y=st.session_state.secreto, line_dash="dash", line_color="green")
+        
+        # La línea verde también se oculta hasta el final
+        if st.session_state.terminado:
+            fig.add_hline(y=st.session_state.secreto, line_dash="dash", line_color="green", annotation_text="Objetivo")
+        
         fig.update_yaxes(range=[0, max_val + 20])
         st.plotly_chart(fig, use_container_width=True)
     else:
