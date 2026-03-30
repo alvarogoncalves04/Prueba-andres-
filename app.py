@@ -34,7 +34,7 @@ with col1:
     st.write(f"Vidas restantes: {'❤️' * st.session_state.vidas}")
     
     # Input de número
-    numero = st.number_input("Introduce tu apuesta:", min_value=1, max_value=max_val, key="input_jugada")
+    numero = st.number_input("Introduce tu número:", min_value=1, max_value=max_val, key="input_jugada")
     
     if st.button("Lanzar"):
         if st.session_state.vidas > 0:
