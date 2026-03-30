@@ -36,7 +36,7 @@ with col1:
     # Input de número
     numero = st.number_input("Introduce tu número:", min_value=1, max_value=max_val, key="input_jugada")
     
-    if st.button("Lanzar"):
+    if st.button("Presiona aqui para ver el resultado"):
         if st.session_state.vidas > 0:
             st.session_state.intentos += 1
             st.session_state.historial.append(numero)
