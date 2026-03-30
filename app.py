@@ -4,7 +4,7 @@ import random
 st.set_page_config(page_title="Juego de Andrés", page_icon="🎮")
 
 st.title("🎮 ¡Bienvenido a mi juego!")
-st.write("Adaptado para Streamlit - Facultad de Ciencias UCV")
+st.write("Prueba tu suerte adivinando el numero que estoy pensando. Cada vez que se reinicie el juego será un número diferente.")
 
 # Usamos session_state para que el juego no se reinicie al tocar un botón
 if 'numero_secreto' not in st.session_state:
