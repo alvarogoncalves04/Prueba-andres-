@@ -6,7 +6,7 @@ import plotly.express as px
 # 1. Configuración de página
 st.set_page_config(page_title="UCV Stats Game", page_icon="📊", layout="wide")
 
-# 2. Inicializar variables de estado
+# 2. Inicializar variables de estado CON SEGURIDAD
 if 'secreto' not in st.session_state:
     st.session_state.secreto = random.randint(1, 100)
     st.session_state.intentos = 0
@@ -17,7 +17,8 @@ if 'secreto' not in st.session_state:
 
 # --- LÓGICA DEL JUEGO ---
 def procesar_jugada():
-    if st.session_state.input_jugada and not st.session_state.terminado:
+    # Validación extra de que las variables existen
+    if 'input_jugada' in st.session_state and not st.session_state.terminado:
         val = st.session_state.input_jugada
         st.session_state.intentos += 1
         st.session_state.historial.append(val)
@@ -33,7 +34,7 @@ def procesar_jugada():
             st.session_state.vidas = "GANADOR"
             st.session_state.terminado = True
         
-        if st.session_state.vidas == 0:
+        if isinstance(st.session_state.vidas, int) and st.session_state.vidas <= 0:
             st.session_state.terminado = True
 
 # --- DISEÑO DE LA INTERFAZ ---
@@ -47,23 +48,28 @@ with col_juego:
     st.subheader("🕹️ Panel de Control")
     
     dificultad = st.select_slider(
-        "Selecciona el rango de búsqueda:", 
-        options=["Fácil (1-50)", "Normal (1-100)", "Modo UCV (1-500)"]
+        "Rango de búsqueda:", 
+        options=["Fácil (1-50)", "Normal (1-100)", "Modo UCV (1-500)"],
+        value="Normal (1-100)"
     )
     max_val = 50 if "Fácil" in dificultad else 100 if "Normal" in dificultad else 500
     
+    # Mostrar Vidas
     if isinstance(st.session_state.vidas, int):
-        st.write(f"Vidas restantes: {'❤️' * st.session_state.vidas} ({st.session_state.vidas})")
+        st.write(f"Vidas: {'❤️' * st.session_state.vidas} ({st.session_state.vidas})")
     else:
-        st.write("✨ **¡Felicidades, ganaste!** ✨")
+        st.write("✨ **¡Victoria!** ✨")
 
+    # Input con seguro para el error de la línea 66
+    esta_terminado = st.session_state.get('terminado', False)
+    
     st.number_input(
-        f"Adivina el número (1-{max_val}):", 
+        f"Adivina (1-{max_val}):", 
         min_value=1, 
         max_value=max_val, 
         key="input_jugada",
         on_change=procesar_jugada,
-        disabled=st.session_state.terminado
+        disabled=esta_terminado
     )
     
     tipo, texto = st.session_state.mensaje
@@ -71,8 +77,8 @@ with col_juego:
     elif tipo == "success": st.success(texto)
     elif tipo == "info": st.info(texto)
 
-    if st.session_state.vidas == 0:
-        st.error(f"¡GAME OVER! El número secreto era {st.session_state.secreto}. 💀")
+    if esta_terminado and st.session_state.vidas != "GANADOR":
+        st.error(f"GAME OVER. El secreto era {st.session_state.secreto}. 💀")
 
     if st.button("🔄 Reiniciar Partida"):
         for key in list(st.session_state.keys()):
@@ -84,30 +90,27 @@ with col_stats:
     
     if st.session_state.historial:
         m1, m2 = st.columns(2)
-        m1.metric("Total de Intentos", st.session_state.intentos)
+        m1.metric("Intentos", st.session_state.intentos)
         
-        # OCULTAR LA RESPUESTA: Solo se muestra si el juego terminó
-        if st.session_state.terminado:
-            error_val = abs(st.session_state.secreto - st.session_state.historial[-1])
-            m2.metric("Distancia al objetivo", "¡Encontrado!" if error_val == 0 else "Fin del juego")
+        # Oculto hasta el final
+        if st.session_state.get('terminado', False):
+            m2.metric("Objetivo", st.session_state.secreto)
         else:
-            m2.metric("Distancia al objetivo", "???") # <--- Secreto guardado
+            m2.metric("Objetivo", "???")
 
         df = pd.DataFrame({
             "Intento": range(1, len(st.session_state.historial) + 1), 
             "Valor": st.session_state.historial
         })
         
-        fig = px.line(df, x="Intento", y="Valor", title="Convergencia de tus predicciones", markers=True)
+        fig = px.line(df, x="Intento", y="Valor", markers=True, template="plotly_dark")
         
-        # La línea verde también se oculta hasta el final
-        if st.session_state.terminado:
-            fig.add_hline(y=st.session_state.secreto, line_dash="dash", line_color="green", annotation_text="Objetivo")
+        if st.session_state.get('terminado', False):
+            fig.add_hline(y=st.session_state.secreto, line_dash="dash", line_color="green")
         
-        fig.update_yaxes(range=[0, max_val + 20])
+        fig.update_yaxes(range=[0, max_val + 10])
         st.plotly_chart(fig, use_container_width=True)
     else:
-        st.info("Aquí aparecerá el análisis cuando hagas tu primer intento.")
+        st.info("Haz tu primer intento para ver los datos.")
 
-st.sidebar.markdown("---")
 st.sidebar.write("🏫 **UCV - Estadística**")
